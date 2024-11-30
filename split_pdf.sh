@@ -17,14 +17,22 @@ parse_args() {
   pdf_file=${1:?}
 }
 
-split_pages() {
+#
+# Prints level-1 sections by parsing PDF metadata.
+# The output looks as follows:
+# ```
+# <Beginning Page> <Section Title>
+# <Beginning Page> <Section Title>
+# ...
+# <Beginning Page> <Section Title>
+# <Last Page + 1>
+# ```
+#
+toplevel_sections() {
   local IFS=''
   local line
-  local cur_title
-  local cur_page
 
-  while true; do
-    read -r line
+  while read -r line; do
     local title=$(grep -Po '^BookmarkTitle: \K.*$' <<< "$line")
     if [[ -z "$title" ]]; then
       continue
@@ -43,21 +51,35 @@ split_pages() {
     fi
 
     if [[ $level -eq 1 ]]; then
-      cur_title="$title"
-      cur_page="$page"
-    elif [[ $level -eq 2 ]]; then
-      page_offset=$(( $page - $cur_page ))
-      output_file="${cur_title}_${page_offset}.pdf"
-      pdftk $pdf_file cat $page output ~$output_file
+      echo "${page} ${title}"
+    fi
+  done
+
+  echo $(( ${page} + 1 ))
+}
+
+
+split_pages() {
+  local line
+  local page
+  local title
+  local page_end
+
+  tac | while read -r page title; do
+    if [[ -n "$title" ]]; then
+      local output_file="${title}.pdf"
+      pdftk $pdf_file cat $page-$page_end output ~$output_file
       pdfcrop ~$output_file $output_file
       rm -f ~$output_file
     fi
+
+    page_end=$(( $page - 1 ))
   done
 }
 
 main() {
   parse_args $*
-  pdftk $pdf_file dump_data output | split_pages
+  pdftk $pdf_file dump_data output | toplevel_sections | split_pages
 }
 
 main $*
