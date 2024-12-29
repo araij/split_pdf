@@ -1,6 +1,11 @@
 #!/bin/bash
 # vim: set sw=2 :
 
+#
+# Copyright (c) 2024 ARAI Junya.
+# Released under the MIT License <http://opensource.org/licenses/MIT>.
+#
+
 set -euo pipefail
 
 die() {
